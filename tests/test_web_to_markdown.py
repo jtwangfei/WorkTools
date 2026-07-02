@@ -8,6 +8,7 @@ from worktools.web_to_markdown import (
     archive_html_file,
     archive_url,
     build_archive_paths,
+    default_extract_html,
     sanitize_filename,
 )
 
@@ -104,6 +105,37 @@ def test_archive_html_file_copies_local_body_images(tmp_path: Path) -> None:
         "# Saved Article\n\n"
         "![Photo](images/image-001.png)"
     )
+
+
+def test_default_extract_html_prefers_zhihu_article_body() -> None:
+    title, article_html = default_extract_html(
+        """
+        <html>
+          <head><title>知乎 fallback</title></head>
+          <body>
+            <h1 class="Post-Title">Useful Zhihu Title</h1>
+            <img src="avatar.jpg" alt="author avatar">
+            <div class="Post-RichTextContainer">
+              <div class="Catalog">目录</div>
+              <div class="RichText ztext Post-RichText">
+                <p>Article body</p>
+                <img src="body.png" alt="Body image">
+              </div>
+            </div>
+            <div class="Recommendations-Main"><img src="related.jpg"></div>
+          </body>
+        </html>
+        """,
+        "file:///tmp/zhihu.html",
+    )
+
+    assert title == "Useful Zhihu Title"
+    assert "<h1>Useful Zhihu Title</h1>" in article_html
+    assert "Article body" in article_html
+    assert "body.png" in article_html
+    assert "目录" not in article_html
+    assert "avatar.jpg" not in article_html
+    assert "related.jpg" not in article_html
 
 
 def test_archive_url_can_keep_links_when_requested(tmp_path: Path) -> None:

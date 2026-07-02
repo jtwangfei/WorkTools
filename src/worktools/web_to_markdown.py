@@ -246,6 +246,10 @@ def default_fetch_html(url: str, timeout: int) -> str:
 def default_extract_html(html: str, url: str) -> tuple[str, str]:
     """Extract the main article HTML and title using trafilatura."""
 
+    zhihu_article = _extract_zhihu_article_html(html, url)
+    if zhihu_article:
+        return zhihu_article
+
     import trafilatura
 
     extracted = trafilatura.extract(
@@ -305,6 +309,31 @@ def _title_from_html(html: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
     title = soup.find("title")
     return title.get_text(" ", strip=True) if title else ""
+
+
+def _extract_zhihu_article_html(html: str, url: str) -> tuple[str, str] | None:
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(html, "html.parser")
+    body = soup.select_one(".Post-RichTextContainer")
+    if not body:
+        return None
+
+    title_node = soup.select_one(".Post-Title") or soup.find("h1")
+    title = (
+        title_node.get_text(" ", strip=True)
+        if title_node
+        else _title_from_html(html) or _fallback_slug(url)
+    )
+    article_soup = BeautifulSoup("<article></article>", "html.parser")
+    article = article_soup.article
+    if article is None:
+        return title, str(body)
+    heading = article_soup.new_tag("h1")
+    heading.string = title
+    article.append(heading)
+    article.append(body)
+    return title, str(article)
 
 
 def _image_extension(image_url: str) -> str:
