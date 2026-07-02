@@ -8,8 +8,8 @@ from worktools.word_to_markdown import (
     OutputExistsError,
     PandocConversionError,
     PandocNotFoundError,
-    WordToMarkdownOptions,
     WordToMarkdownError,
+    WordToMarkdownOptions,
     WordToMarkdownResult,
     convert_word_to_markdown,
 )
@@ -151,7 +151,9 @@ def test_cli_calls_converter_with_expected_options(
     )
 
     assert exit_code == 0
-    assert calls == [WordToMarkdownOptions(input_path=input_path, output=output_path, overwrite=True)]
+    assert calls == [
+        WordToMarkdownOptions(input_path=input_path, output=output_path, overwrite=True)
+    ]
     output = capsys.readouterr()
     assert f"Saved Markdown: {output_path}" in output.out
     assert f"Saved media: {tmp_path / 'media'}" in output.out
