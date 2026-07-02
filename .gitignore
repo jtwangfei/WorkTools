@@ -17,6 +17,7 @@ dist/
 
 # Generated local archives
 exports/
+.worktrees/
 
 # Test and coverage output
 .pytest_cache/
