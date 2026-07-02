@@ -315,9 +315,10 @@ def _extract_zhihu_article_html(html: str, url: str) -> tuple[str, str] | None:
     from bs4 import BeautifulSoup
 
     soup = BeautifulSoup(html, "html.parser")
-    body = soup.select_one(".Post-RichTextContainer")
-    if not body:
+    container = soup.select_one(".Post-RichTextContainer")
+    if not container:
         return None
+    body = container.select_one(".Post-RichText") or container
 
     title_node = soup.select_one(".Post-Title") or soup.find("h1")
     title = (
