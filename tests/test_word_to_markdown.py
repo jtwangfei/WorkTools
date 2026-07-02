@@ -9,8 +9,11 @@ from worktools.word_to_markdown import (
     PandocConversionError,
     PandocNotFoundError,
     WordToMarkdownOptions,
+    WordToMarkdownError,
+    WordToMarkdownResult,
     convert_word_to_markdown,
 )
+from worktools.word_to_markdown_cli import main
 
 
 def save_docx(path: Path) -> None:
@@ -128,3 +131,37 @@ def test_convert_reports_pandoc_failure(tmp_path: Path) -> None:
 
     with pytest.raises(PandocConversionError, match="bad input"):
         convert_word_to_markdown(WordToMarkdownOptions(input_path=input_path), runner=runner)
+
+
+def test_cli_calls_converter_with_expected_options(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    input_path = tmp_path / "source.docx"
+    output_path = tmp_path / "source.md"
+    save_docx(input_path)
+    calls: list[WordToMarkdownOptions] = []
+
+    def converter(options: WordToMarkdownOptions) -> WordToMarkdownResult:
+        calls.append(options)
+        return WordToMarkdownResult(markdown_path=output_path, media_dir=tmp_path / "media")
+
+    exit_code = main(
+        [str(input_path), "-o", str(output_path), "--overwrite"],
+        converter=converter,
+    )
+
+    assert exit_code == 0
+    assert calls == [WordToMarkdownOptions(input_path=input_path, output=output_path, overwrite=True)]
+    output = capsys.readouterr()
+    assert f"Saved Markdown: {output_path}" in output.out
+    assert f"Saved media: {tmp_path / 'media'}" in output.out
+
+
+def test_cli_returns_nonzero_for_conversion_errors(capsys: pytest.CaptureFixture[str]) -> None:
+    def converter(options: WordToMarkdownOptions) -> WordToMarkdownResult:
+        raise WordToMarkdownError("Could not convert document")
+
+    exit_code = main(["input.docx"], converter=converter)
+
+    assert exit_code == 1
+    assert "Error: Could not convert document" in capsys.readouterr().err
