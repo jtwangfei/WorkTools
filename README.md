@@ -86,6 +86,36 @@ Useful options:
 - `--timeout 30`: set request timeout in seconds.
 - `--keep-links`: keep normal hyperlinks. By default, links are converted to plain text while images are saved locally.
 
+## Word to Markdown Tool
+
+Convert a Word `.docx` file into Markdown using Pandoc:
+
+```powershell
+python -m worktools.word_to_markdown_cli D:\Docs\report.docx
+```
+
+By default, output is written under `exports/markdown/`:
+
+```text
+exports/markdown/
+  report/
+    report.md
+    media/
+      image1.png
+```
+
+Use a custom Markdown output path:
+
+```powershell
+python -m worktools.word_to_markdown_cli D:\Docs\report.docx -o D:\Notes\report.md
+```
+
+Useful options:
+
+- `--overwrite`: replace an existing Markdown output file.
+
+This tool requires the `pandoc` executable on `PATH`. Pandoc handles Word structure conversion and emits Word formulas as LaTeX math where supported.
+
 ## Adding a New Tool
 
 1. Put quick standalone scripts in `scripts/`.
