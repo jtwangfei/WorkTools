@@ -9,6 +9,7 @@ from pathlib import Path
 from shutil import rmtree
 from time import strftime
 from urllib.parse import urljoin, urlparse
+from urllib.request import url2pathname
 
 
 class ArchiveError(RuntimeError):
@@ -101,21 +102,64 @@ def archive_url(
 
     selected_options = options or ArchiveOptions()
     fetch = fetch_html or default_fetch_html
+
+    html = fetch(url, selected_options.timeout)
+    return archive_html(
+        html,
+        url,
+        selected_options,
+        extract_html=extract_html,
+        download_image=download_image,
+    )
+
+
+def archive_html_file(
+    html_path: Path,
+    options: ArchiveOptions | None = None,
+    source_url: str | None = None,
+    *,
+    extract_html: ExtractHtml | None = None,
+    download_image: DownloadImage | None = None,
+) -> ArchiveResult:
+    """Archive a saved HTML file into a per-article Markdown folder."""
+
+    resolved_html_path = html_path.resolve()
+    html = resolved_html_path.read_text(encoding="utf-8")
+    base_url = source_url or resolved_html_path.as_uri()
+    return archive_html(
+        html,
+        base_url,
+        options,
+        extract_html=extract_html,
+        download_image=download_image,
+    )
+
+
+def archive_html(
+    html: str,
+    source_url: str,
+    options: ArchiveOptions | None = None,
+    *,
+    extract_html: ExtractHtml | None = None,
+    download_image: DownloadImage | None = None,
+) -> ArchiveResult:
+    """Archive an HTML document into a per-article Markdown folder."""
+
+    selected_options = options or ArchiveOptions()
     extract = extract_html or default_extract_html
     image_downloader = download_image or default_download_image
 
-    html = fetch(url, selected_options.timeout)
-    title, article_html = extract(html, url)
+    title, article_html = extract(html, source_url)
     if not article_html.strip():
-        raise ExtractionError(f"Could not extract article content from {url}")
+        raise ExtractionError(f"Could not extract article content from {source_url}")
 
-    paths = build_archive_paths(selected_options.output_dir, title, url)
+    paths = build_archive_paths(selected_options.output_dir, title, source_url)
     _prepare_output(paths, selected_options.overwrite)
 
     warnings: list[str] = []
     markdown = rewrite_html_for_markdown(
         article_html,
-        url,
+        source_url,
         paths.images_dir,
         image_downloader,
         selected_options.timeout,
@@ -125,7 +169,7 @@ def archive_url(
     paths.markdown_path.write_text(markdown.strip() + "\n", encoding="utf-8")
 
     return ArchiveResult(
-        url=url,
+        url=source_url,
         title=title,
         markdown_path=paths.markdown_path,
         article_dir=paths.article_dir,
@@ -224,6 +268,12 @@ def default_download_image(url: str, destination: Path, timeout: int) -> None:
 
     import requests
 
+    parsed = urlparse(url)
+    if parsed.scheme in {"", "file"}:
+        source_path = _path_from_file_url(url) if parsed.scheme == "file" else Path(url)
+        destination.write_bytes(source_path.read_bytes())
+        return
+
     try:
         response = requests.get(
             url,
@@ -262,3 +312,8 @@ def _image_extension(image_url: str) -> str:
     if suffix in {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg"}:
         return suffix
     return ".jpg"
+
+
+def _path_from_file_url(file_url: str) -> Path:
+    parsed = urlparse(file_url)
+    return Path(url2pathname(parsed.path))

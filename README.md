@@ -70,6 +70,16 @@ Use a custom output root:
 python -m worktools.markdown_url "https://example.com/article" -o D:\Articles
 ```
 
+If a site blocks automated fetching, save the article page from a logged-in browser as a
+complete webpage, then convert that HTML file:
+
+```powershell
+python -m worktools.markdown_url --html-file D:\Downloads\article.html
+```
+
+Use `--source-url "https://example.com/article"` only when the saved HTML still points to
+remote relative assets instead of local files.
+
 Useful options:
 
 - `--overwrite`: replace an existing article folder.

@@ -5,6 +5,7 @@ import pytest
 from worktools.web_to_markdown import (
     ArchiveOptions,
     OutputExistsError,
+    archive_html_file,
     archive_url,
     build_archive_paths,
     sanitize_filename,
@@ -68,6 +69,40 @@ def test_archive_url_writes_markdown_and_downloads_body_images(tmp_path: Path) -
         "# Useful Article\n\n"
         "Read the details.\n\n"
         "![Photo](images/image-001.jpg)"
+    )
+
+
+def test_archive_html_file_copies_local_body_images(tmp_path: Path) -> None:
+    saved_assets = tmp_path / "saved_files"
+    saved_assets.mkdir()
+    (saved_assets / "photo.png").write_bytes(b"local image")
+    html_path = tmp_path / "article.html"
+    html_path.write_text("<html><title>Saved fallback</title></html>", encoding="utf-8")
+
+    def extract_html(html: str, url: str) -> tuple[str, str]:
+        assert html == "<html><title>Saved fallback</title></html>"
+        assert url == html_path.resolve().as_uri()
+        return (
+            "Saved Article",
+            """
+            <article>
+              <h1>Saved Article</h1>
+              <img src="saved_files/photo.png" alt="Photo">
+            </article>
+            """,
+        )
+
+    result = archive_html_file(
+        html_path,
+        ArchiveOptions(output_dir=tmp_path / "out"),
+        extract_html=extract_html,
+    )
+
+    copied_image = result.images_dir / "image-001.png"
+    assert copied_image.read_bytes() == b"local image"
+    assert result.markdown_path.read_text(encoding="utf-8").strip() == (
+        "# Saved Article\n\n"
+        "![Photo](images/image-001.png)"
     )
 
 
