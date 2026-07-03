@@ -30,6 +30,8 @@ def main(
         input_path=Path(args.input),
         output=Path(args.output) if args.output else None,
         overwrite=args.overwrite,
+        formula_ocr_python=Path(args.formula_ocr_python) if args.formula_ocr_python else None,
+        formula_ocr_device=args.formula_ocr_device,
     )
 
     try:
@@ -40,6 +42,8 @@ def main(
 
     print(f"Saved Markdown: {result.markdown_path}")
     print(f"Saved media: {result.media_dir}")
+    for warning in result.warnings:
+        print(f"Warning: {warning}", file=sys.stderr)
     return 0
 
 
@@ -54,6 +58,15 @@ def _build_parser() -> ArgumentParser:
         "--overwrite",
         action="store_true",
         help="Replace an existing Markdown output file.",
+    )
+    parser.add_argument(
+        "--formula-ocr-python",
+        help="Python executable for PaddleOCR formula recognition.",
+    )
+    parser.add_argument(
+        "--formula-ocr-device",
+        default="cpu",
+        help="PaddleOCR device for formula recognition, such as cpu or gpu.",
     )
     return parser
 
